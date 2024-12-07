@@ -6,6 +6,7 @@
 
 #include "lvgl.h"
 #include <stdio.h>
+#include "app_audio.h"
 
 #include "lv_example_pub.h"
 #include "lv_example_image.h"
@@ -213,20 +214,26 @@ static void light_2color_layer_timer_cb(lv_timer_t *tmr)
             case 100:
                 lv_obj_clear_flag(img_light_pwm_100, LV_OBJ_FLAG_HIDDEN);
                 lv_img_set_src(img_light_pwm_100, light_image.img_pwm_100[cck_set]);
+                audio_handle_info(SOUND_TYPE_100PER);
+                
             case 75:
                 lv_obj_clear_flag(img_light_pwm_75, LV_OBJ_FLAG_HIDDEN);
                 lv_img_set_src(img_light_pwm_75, light_image.img_pwm_75[cck_set]);
+                audio_handle_info(SOUND_TYPE_75PER);
             case 50:
                 lv_obj_clear_flag(img_light_pwm_50, LV_OBJ_FLAG_HIDDEN);
                 lv_img_set_src(img_light_pwm_50, light_image.img_pwm_50[cck_set]);
+                audio_handle_info(SOUND_TYPE_50PER);
             case 25:
                 lv_obj_clear_flag(img_light_pwm_25, LV_OBJ_FLAG_HIDDEN);
                 lv_img_set_src(img_light_pwm_25, light_image.img_pwm_25[cck_set]);
                 lv_img_set_src(img_light_bg, light_image.img_bg[cck_set]);
+                audio_handle_info(SOUND_TYPE_25PER);
                 break;
             case 0:
                 lv_obj_clear_flag(img_light_pwm_0, LV_OBJ_FLAG_HIDDEN);
                 lv_img_set_src(img_light_bg, &light_close_bg);
+                audio_handle_info(SOUND_TYPE_0PER);
                 break;
             default:
                 break;
