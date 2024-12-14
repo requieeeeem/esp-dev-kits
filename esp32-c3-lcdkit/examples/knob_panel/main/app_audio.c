@@ -21,6 +21,9 @@
 #include "audio_player.h"
 #include "bsp/esp-bsp.h"
 
+extern EventGroupHandle_t event_group;
+#define AUDIO_TRIGGER_BIT (1 << 0)
+
 static const char *TAG = "app_audio";
 
 static esp_codec_dev_handle_t play_dev_handle;
@@ -66,7 +69,7 @@ esp_err_t audio_handle_info(PDM_SOUND_TYPE voice)
     case SOUND_TYPE_FACTORY:
         sprintf(filepath, "%s/%s", CONFIG_BSP_SPIFFS_MOUNT_POINT, "factory.mp3");
         break;
-    /* case SOUND_TYPE_0PER:
+    case SOUND_TYPE_0PER:
         sprintf(filepath, "%s/%s", CONFIG_BSP_SPIFFS_MOUNT_POINT, "0_percent.mp3");
         break;
     case SOUND_TYPE_25PER:
@@ -80,7 +83,7 @@ esp_err_t audio_handle_info(PDM_SOUND_TYPE voice)
         break;
     case SOUND_TYPE_100PER:
         sprintf(filepath, "%s/%s", CONFIG_BSP_SPIFFS_MOUNT_POINT, "100_percent.mp3");
-        break; */
+        break;
     }
 
     FILE *fp = fopen(filepath, "r");

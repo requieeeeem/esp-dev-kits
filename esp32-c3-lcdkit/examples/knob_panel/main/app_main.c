@@ -9,6 +9,7 @@
 #include <math.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/event_groups.h"
 #include "esp_system.h"
 #include "esp_heap_caps.h"
 #include "nvs_flash.h"
@@ -19,6 +20,7 @@
 #include "settings.h"
 #include "lv_example_pub.h"
 #include "bsp/esp-bsp.h"
+
 
 static const char *TAG = "main";
 
@@ -207,6 +209,7 @@ void app_main(void)
 
     bsp_board_init();
     audio_play_start();
+
 
 #if MEMORY_MONITOR
     sys_monitor_start();

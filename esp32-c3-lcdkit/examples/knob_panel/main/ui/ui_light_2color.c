@@ -12,6 +12,20 @@
 #include "lv_example_image.h"
 #include "bsp/esp-bsp.h"
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/event_groups.h"
+
+static EventGroupHandle_t audio_event_group;
+static void voice_announcement_task(void* arg);
+
+#define EVENT_BRIGHTNESS_0 (1 << 1)
+#define EVENT_BRIGHTNESS_25 (1 << 2)
+#define EVENT_BRIGHTNESS_50 (1 << 3)
+#define EVENT_BRIGHTNESS_75 (1 << 4)
+#define EVENT_BRIGHTNESS_100 (1 << 5)
+
+
 static bool light_2color_layer_enter_cb(void *layer);
 static bool light_2color_layer_exit_cb(void *layer);
 static void light_2color_layer_timer_cb(lv_timer_t *tmr);
@@ -165,6 +179,20 @@ static bool light_2color_layer_enter_cb(void *layer)
         ui_light_2color_init(create_layer->lv_obj_layer);
         set_time_out(&time_20ms, 20);
         set_time_out(&time_500ms, 200);
+        
+        audio_event_group = xEventGroupCreate();
+        if (audio_event_group == NULL) {
+            printf("Error: Failed to create event group");
+        }
+
+        xTaskCreate(
+            voice_announcement_task,
+            "VoiceAnnouncement",
+            4096,
+            NULL,
+            5,
+            NULL
+        );
     }
 
     return ret;
@@ -188,6 +216,28 @@ static void light_2color_layer_timer_cb(lv_timer_t *tmr)
         if ((light_set_conf.light_pwm ^ light_xor.light_pwm) || (light_set_conf.light_cck ^ light_xor.light_cck)) {
             light_xor.light_pwm = light_set_conf.light_pwm;
             light_xor.light_cck = light_set_conf.light_cck;
+
+            switch (light_xor.light_pwm) {
+            case 100:
+                xEventGroupSetBits(audio_event_group, EVENT_BRIGHTNESS_100);
+            case 75:
+                //audio_handle_info(SOUND_TYPE_75PER);
+                xEventGroupSetBits(audio_event_group, EVENT_BRIGHTNESS_75);
+            case 50:
+                //audio_handle_info(SOUND_TYPE_50PER);
+                xEventGroupSetBits(audio_event_group, EVENT_BRIGHTNESS_50);
+            case 25:
+                //audio_handle_info(SOUND_TYPE_25PER);
+                xEventGroupSetBits(audio_event_group, EVENT_BRIGHTNESS_25);
+                break;
+            case 0:
+                //audio_handle_info(SOUND_TYPE_0PER);
+                xEventGroupSetBits(audio_event_group, EVENT_BRIGHTNESS_0);
+                break;
+            default:
+                break;
+            }
+
 
             if (LIGHT_CCK_COOL == light_xor.light_cck) {
                 RGB_color = (0xFF * light_xor.light_pwm / 100) << 16 | (0xFF * light_xor.light_pwm / 100) << 8 | (0xFF * light_xor.light_pwm / 100) << 0;
@@ -214,30 +264,64 @@ static void light_2color_layer_timer_cb(lv_timer_t *tmr)
             case 100:
                 lv_obj_clear_flag(img_light_pwm_100, LV_OBJ_FLAG_HIDDEN);
                 lv_img_set_src(img_light_pwm_100, light_image.img_pwm_100[cck_set]);
-                audio_handle_info(SOUND_TYPE_WASH_END_EN);
-                
+                //audio_handle_info(SOUND_TYPE_100PER);
+                //xEventGroupSetBits(audio_event_group, EVENT_BRIGHTNESS_100);
             case 75:
                 lv_obj_clear_flag(img_light_pwm_75, LV_OBJ_FLAG_HIDDEN);
                 lv_img_set_src(img_light_pwm_75, light_image.img_pwm_75[cck_set]);
-                audio_handle_info(SOUND_TYPE_WASH_END_EN);
+                //audio_handle_info(SOUND_TYPE_75PER);
+                //xEventGroupSetBits(audio_event_group, EVENT_BRIGHTNESS_75);
             case 50:
                 lv_obj_clear_flag(img_light_pwm_50, LV_OBJ_FLAG_HIDDEN);
                 lv_img_set_src(img_light_pwm_50, light_image.img_pwm_50[cck_set]);
-                audio_handle_info(SOUND_TYPE_WASH_END_EN);
+                //audio_handle_info(SOUND_TYPE_50PER);
+                //xEventGroupSetBits(audio_event_group, EVENT_BRIGHTNESS_50);
             case 25:
                 lv_obj_clear_flag(img_light_pwm_25, LV_OBJ_FLAG_HIDDEN);
                 lv_img_set_src(img_light_pwm_25, light_image.img_pwm_25[cck_set]);
                 lv_img_set_src(img_light_bg, light_image.img_bg[cck_set]);
-                audio_handle_info(SOUND_TYPE_WASH_END_EN);
+                //audio_handle_info(SOUND_TYPE_25PER);
+                //xEventGroupSetBits(audio_event_group, EVENT_BRIGHTNESS_25);
                 break;
             case 0:
                 lv_obj_clear_flag(img_light_pwm_0, LV_OBJ_FLAG_HIDDEN);
                 lv_img_set_src(img_light_bg, &light_close_bg);
-                audio_handle_info(SOUND_TYPE_WASH_END_EN);
+                //audio_handle_info(SOUND_TYPE_0PER);
+                //xEventGroupSetBits(audio_event_group, EVENT_BRIGHTNESS_0);
                 break;
             default:
                 break;
             }
+        }
+    }
+}
+
+static void voice_announcement_task(void* arg) {
+    while (1) {
+        EventBits_t trigger = xEventGroupWaitBits(
+            audio_event_group,
+            EVENT_BRIGHTNESS_0 | EVENT_BRIGHTNESS_25 |
+            EVENT_BRIGHTNESS_50 | EVENT_BRIGHTNESS_75 |
+            EVENT_BRIGHTNESS_100,
+            pdTRUE,
+            pdFALSE,
+            portMAX_DELAY
+        );
+
+        if (trigger & EVENT_BRIGHTNESS_0) {
+            audio_handle_info(SOUND_TYPE_0PER);
+        }
+        else if (trigger & EVENT_BRIGHTNESS_25) {
+            audio_handle_info(SOUND_TYPE_25PER);
+        }
+        else if (trigger & EVENT_BRIGHTNESS_50) {
+            audio_handle_info(SOUND_TYPE_50PER);
+        }
+        else if (trigger & EVENT_BRIGHTNESS_75) {
+            audio_handle_info(SOUND_TYPE_75PER);
+        }
+        else if (trigger & EVENT_BRIGHTNESS_100) {
+            audio_handle_info(SOUND_TYPE_100PER);
         }
     }
 }
